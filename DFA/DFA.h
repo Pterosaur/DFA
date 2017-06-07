@@ -50,7 +50,7 @@ namespace DFA {
         }
     public:
         void force_add(const type & c) {
-            int index = -1;
+            size_t index = -1;
             auto old_pos = m_idmap.find(c.get_id());
             if (old_pos != m_idmap.end()) {
                 index = old_pos->second;
@@ -87,13 +87,26 @@ namespace DFA {
 
     class rule : public _id_name_map<condition>{
     public:
-        bool match(const condition & c) const {
+		enum match_result{
+			match_success,
+			match_fail,
+			inexistent,
+		};
+        match_result match(const condition & c) const {
             auto command = m_idmap.find(c.m_id);
             if (command == m_idmap.end()) {
-                return false;
+                return inexistent;
             }
-            return m_container[command->second].m_flag == c.m_flag;
+			if (m_container[command->second].m_flag == c.m_flag) {
+				return match_success;
+			}
+			else {
+				return match_fail;
+			}
         }
+		size_t condition_count() const {
+			return m_container.size();
+		}
     };
 
     struct context {
@@ -161,13 +174,16 @@ namespace DFA {
             m_max_similarity(std::numeric_limits<size_t>().min()),
             m_candidate(nullptr) {}
         const state * operator()(const context & c, const edge & e) {
+			size_t similarity = 0;
             for (auto & cond : c.m_conds) {
-                if ( ! e.m_rule.match(cond)) {
-                    return nullptr;
-                }
+				switch (e.m_rule.match(cond)) {
+				case rule::match_success:similarity++; break;
+				case rule::inexistent:break;
+				case rule::match_fail:return m_candidate;
+				}
             }
-            if (c.m_conds.size() > m_max_similarity) {
-                m_max_similarity = c.m_conds.size();
+            if (similarity > m_max_similarity) {
+				m_max_similarity = similarity;
                 m_candidate = &e.m_next;
             }
             return m_candidate;

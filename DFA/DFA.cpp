@@ -4,7 +4,8 @@
 #include "stdafx.h"
 
 #include "DFA.h"
-
+#include <iostream>
+#define TEST(x) if ( ! (x)) {std::cerr<<"ERROR("<<__LINE__<<") : "<<#x<<std::endl;exit(-1);}
 
 
 int main()
@@ -30,7 +31,9 @@ int main()
 
     DFA::rule stop2forward;
     DFA::rule forward2up;
+	DFA::rule forward2forward;
     DFA::rule up2forward;
+    DFA::rule up2up;
 
 
     DFA::condition forward_available{forward,"forward", true};
@@ -38,11 +41,15 @@ int main()
     
     stop2forward.add(forward_available);
     forward2up.add(forward_invalid);
+    forward2forward.add(forward_available);
     up2forward.add(forward_available);
+    up2up.add(forward_invalid);
 
     nforward.add_edge(sup, forward2up, 0);
+    nforward.add_edge(sforward, forward2forward, 0);
     nstop.add_edge(sforward, stop2forward, 0);
     nup.add_edge(sforward, up2forward, 0);
+    nup.add_edge(sup, up2up, 0);
 
 
     state_machine.force_add(nforward);
@@ -56,13 +63,25 @@ int main()
 
 
     auto next = state_machine[stop]->jump<DFA::similarity_match>(ctx1);
+	TEST(next != nullptr && next->get_id() == forward);
+
     next = state_machine[stop]->jump<DFA::similarity_match>(ctx2);
+	TEST(next == nullptr);
+
     next = state_machine[forward]->jump<DFA::similarity_match>(ctx1);
+	TEST(next != nullptr && next->get_id() == forward);
+
     next = state_machine[forward]->jump<DFA::similarity_match>(ctx2);
+	TEST(next != nullptr && next->get_id() == up);
+
     next = state_machine[up]->jump<DFA::similarity_match>(ctx1);
+	TEST(next != nullptr && next->get_id() == forward);
+
     next = state_machine[up]->jump<DFA::similarity_match>(ctx2);
+	TEST(next != nullptr && next->get_id() == up);
 
 
+	std::cout << "SUCCESS" << std::endl;
     return 0;
 }
 
